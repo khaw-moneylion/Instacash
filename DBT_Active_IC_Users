@@ -1,0 +1,39 @@
+with fct_user_summary as
+(select * from cashadvance.fct_user_summary)
+,fct_boost_utilised_in_current_cycle as
+(select * from cashadvance_boost.fct_boost_utilised_in_current_cycle)
+, membership as
+(select * from marketing.stg_user__membership__merged)
+
+,trial_ic as
+(select * from icpricing.user)
+
+, user_details as(
+    select user_id, email, num_ic_cycles, is_ic_eligible, max_current_principal_dpd, num_paid_off_ic_cycles, upcoming_cash_advance_collection_at, days_inactive_since_last_ic_cycle_paid_off
+    from fct_user_summary
+    where mlemployee = 'false'
+    and is_ic_eligible
+    and num_paid_off_ic_cycles >= 1
+    and max_current_principal_dpd <= 30
+    and days_inactive_since_last_ic_cycle_paid_off <= 75
+    and email not like '%moneylion%'
+)
+
+,latest_cycle_utilized_boost as(
+    select distinct user_id from fct_boost_utilised_in_current_cycle
+    where boost_type='PROMO'
+    and cash_advance_collection_at > CURRENT_TIMESTAMP
+)
+
+,ic_tier as (
+    select ml_user_id as user_id
+    from icpricing.user
+    where enabled
+)
+
+    select a.*
+    from user_details a
+    left join ic_tier g
+    on a.user_id = g.user_id
+    where g.user_id is null
+    and a.user_id not in (select distinct user_id from latest_cycle_utilized_boost)
