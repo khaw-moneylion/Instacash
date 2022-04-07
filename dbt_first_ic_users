@@ -1,0 +1,36 @@
+with fct_user_summary as
+(select * from cashadvance.fct_user_summary)
+
+,boost_awarded as
+(select * from prod.boost_awarded)
+
+,ic_tier as(
+    select
+      ml_user_id
+  from icpricing.user
+  where enabled
+)
+
+,active_boost as(
+    select
+        user_id as email
+    from boost_awarded
+    where expiry_date>=getdate()
+)
+
+, user_details as(
+    select user_id, email, is_ic_eligible, max_current_principal_dpd, num_paid_off_ic_cycles, upcoming_cash_advance_collection_at, days_inactive_since_last_ic_cycle_paid_off,first_ic_eligible_date
+    from fct_user_summary
+    where mlemployee = 'false'
+    and num_ic_cycles = 0
+    and is_ic_eligible
+    and current_date - date(first_ic_eligible_date) between 30 and 120
+    and email not in (select email from active_boost)
+)
+
+
+    select a.user_id, a.email,a.first_base_eligible_grp,a.first_ic_eligible_date
+    from user_details a
+    left join ic_tier g
+    on a.user_id = g.ml_user_id
+    where g.ml_user_id is null
