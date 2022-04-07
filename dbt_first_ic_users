@@ -29,7 +29,7 @@ with fct_user_summary as
 )
 
 
-    select a.user_id, a.email,a.first_base_eligible_grp,a.first_ic_eligible_date
+    select count(distinct email)
     from user_details a
     left join ic_tier g
     on a.user_id = g.ml_user_id
